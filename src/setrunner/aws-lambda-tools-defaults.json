@@ -10,10 +10,10 @@
 	],
 	
 	"profile"     : "",
-	"region"      : "",
+	"region"      : "us-west-1",
 	"configuration" : "Release",
-	"framework"     : "netcoreapp1.0",
+	"framework"     : "netcoreapp2.1",
 	"s3-prefix"     : "setrunner/",
-	"template"      : "serverless.template",
-	"template-parameters" : "ShouldCreateBucket=true;BucketName="
+	"s3-bucket"		: "setrunner.bucket",
+	"template"      : "serverless.template"
 }
