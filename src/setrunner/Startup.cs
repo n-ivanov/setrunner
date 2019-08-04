@@ -43,6 +43,8 @@ namespace setrunner
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddLambdaLogger(Configuration.GetLambdaLoggerOptions());
+            loggerFactory.AddConsole();
+            loggerFactory.AddDebug();
             app.UseMvc();
         }
     }
