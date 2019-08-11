@@ -11,6 +11,7 @@ namespace setrunner.Controllers
 
     public abstract class DBController : Controller
     {
+        protected const int DEFAULT_LIMIT = 10;
         protected string connectionString_;
 
         public DBController()
@@ -67,5 +68,59 @@ namespace setrunner.Controllers
                 return items;
             } 
         }
+
+        protected TrackModel ReadTrackWithCounts(MySqlDataReader reader)
+        {
+            return new TrackWithCountModel()
+            {
+                Name = reader.GetString("track_name"),
+                Artist = reader.GetString("artist_name"),
+                Publisher = reader.GetString("publisher_name"),
+                OnSpotify = reader.GetBoolean("on_spotify"),
+                OnSoundcloud = reader.GetBoolean("on_soundcloud"),
+                OnYoutube = reader.GetBoolean("on_youtube"),
+                OnAppleMusic = reader.GetBoolean("on_apple_music"),
+                CountSets = reader.GetInt32("count")
+            };
+        }
+
+        protected TrackModel ReadTrack(MySqlDataReader reader)
+        {
+            return new TrackModel()
+            {
+                Name = reader.GetString("track_name"),
+                Artist = reader.GetString("artist_name"),
+                Publisher = reader.GetString("publisher_name"),
+                OnSpotify = reader.GetBoolean("on_spotify"),
+                OnSoundcloud = reader.GetBoolean("on_soundcloud"),
+                OnYoutube = reader.GetBoolean("on_youtube"),
+                OnAppleMusic = reader.GetBoolean("on_apple_music"),
+            };
+        }
+
+        protected SetlistModel ReadSetlist(MySqlDataReader reader)
+        {
+            return new SetlistModel()
+            {
+                Name = reader.GetString("set_name"),
+                Artist = reader.GetString("artist_name"),
+                Uri = reader.GetString("uri"),
+                Venue = reader.GetString("venue_event"),
+                Date = reader.GetDateTime("set_date")
+            };
+        }
+
+        protected void FixDateParameters(ref string startDate, ref string endDate)
+        {
+            if(String.IsNullOrWhiteSpace(startDate))
+            {
+                startDate = "0001-01-01";
+            }
+            else if(string.IsNullOrWhiteSpace(endDate))
+            {
+                endDate = $"{DateTime.Now:yyyy-MM-dd}";
+            }
+        }
+
     }
 }

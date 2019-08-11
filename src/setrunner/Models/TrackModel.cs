@@ -9,6 +9,10 @@ namespace setrunner.Models
         public bool OnSoundcloud {get;set;}
         public bool OnYoutube {get;set;}
         public bool OnAppleMusic {get;set;}
+    }
+
+    public class TrackWithCountModel : TrackModel
+    {
         public int CountSets {get;set;}
     }
 }
