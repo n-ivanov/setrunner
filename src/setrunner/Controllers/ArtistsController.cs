@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using setrunner.Models;
+using setrunner.Attributes;
 
 namespace setrunner.Controllers
 {
@@ -12,6 +11,8 @@ namespace setrunner.Controllers
     [ApiController]
     public class ArtistsController : DBController
     {
+        private const int DEFAULT_LIMIT = 10;
+
         public ArtistsController()
         {
             var server = Environment.GetEnvironmentVariable("DB_SERVER");
@@ -23,65 +24,62 @@ namespace setrunner.Controllers
                 $"server={server};port={port};uid={uid};pwd={password};database={database}";
         }
 
-        // GET api/values
-        [HttpGet]
-        public IEnumerable<string> Get()
-        {
-            return new string[] { "deadmau5", "value2" };
-        }
-
         // GET api/v1/artists/ID/popular
-        [Route("{id}/tracks/popular")]//&{skip:int}")]
+        [Route("{id}/tracks/popular")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)] //TODO figure out why single argument not supported
         [HttpGet]
-        public IActionResult GetArtistPopularTracks(string id, int limit = 25, int skip = 0)
+        public IActionResult GetArtistPopularTracks(string id, int limit = DEFAULT_LIMIT, int skip = 0)
         {
             var command = $"CALL GetArtistPopularTracks('{id}', {limit}, {skip})";
             return GetItemsViaStoredProc(command, ReadTrack);
         }
 
         // GET api/v1/artists/ID/sets/tracks
-        [Route("{id}/sets/tracks")]//&{skip:int}")]
+        [Route("{id}/sets/tracks")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)]
         [HttpGet]
-        public IActionResult GetArtistRecentSetTracks(string id, int numSets, int limit = 25, int skip = 0)
+        [RequireParameter(MatchMode.All,"n")]
+        public IActionResult GetArtistRecentSetTracks(string id, int n=5, int limit = DEFAULT_LIMIT, int skip = 0)
         {
-            var command = $"CALL GetArtistsTracksInLastNSets('{id}', {numSets}, {limit}, {skip})";
+            var command = $"CALL GetArtistTracksInLastNSets('{id}', {n}, {limit}, {skip})";
             return GetItemsViaStoredProc(command, ReadTrack);
         }
 
         // GET api/v1/artists/ID/sets/tracks
-        //TODO - Add ability to only provide one of the date parameters (i.e. sets before X, sets after Y type queries)
-        [Route("{id}/sets/tracks")]//&{skip:int}")]
+        [Route("{id}/sets/tracks")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)]
         [HttpGet]
-        public IActionResult GetArtistRecentSetTracks(string id, string startDate, string endDate, int limit = 25, int skip = 0)
+        [RequireParameter(MatchMode.Any,"startDate","endDate")]
+        public IActionResult GetArtistRecentSetTracks(string id, string startDate = null, string endDate = null, int limit = DEFAULT_LIMIT, int skip = 0)
         {
+            FixDateParameters(ref startDate, ref endDate);
             var command = $"CALL GetArtistTracksInSetsInDateRange('{id}', '{startDate}', '{endDate}', {limit}, {skip})";
             return GetItemsViaStoredProc(command, ReadTrack);
         }
 
         // GET api/v1/artists/ID/sets
-        [Route("{id}/sets")]//&{skip:int}")]
+        [Route("{id}/sets")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)]
         [HttpGet]
-        public IActionResult GetArtistSets(string id, int limit = 25, int skip = 0)
+        public IActionResult GetArtistSets(string id, int limit = DEFAULT_LIMIT, int skip = 0)
         {
             var command = $"CALL GetArtistSets('{id}',  {limit}, {skip})";
             return GetItemsViaStoredProc(command, ReadSetlist);
         }
 
         // GET api/v1/artists/ID/sets
-        [Route("{id}/sets")]//&{skip:int}")]
+        [Route("{id}/sets")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)]
         [HttpGet]
-        public IActionResult GetArtistSetsInDateRange(string id, string startDate, string endDate, int limit = 25, int skip = 0)
+        [RequireParameter(MatchMode.Any,"startDate","endDate")]
+        public IActionResult GetArtistSetsInDateRange(string id, string startDate = null, string endDate = null, int limit = DEFAULT_LIMIT, int skip = 0)
         {
+            FixDateParameters(ref startDate, ref endDate);
             var command = $"CALL GetArtistSetsInDateRange('{id}', '{startDate}', '{endDate}', {limit}, {skip})";
             return GetItemsViaStoredProc(command, ReadSetlist);
         }
@@ -111,6 +109,18 @@ namespace setrunner.Controllers
                 Venue = reader.GetString("venue_event"),
                 Date = reader.GetDateTime("set_date")
             };
+        }
+
+        private void FixDateParameters(ref string startDate, ref string endDate)
+        {
+            if(String.IsNullOrWhiteSpace(startDate))
+            {
+                startDate = "0001-01-01";
+            }
+            else if(string.IsNullOrWhiteSpace(endDate))
+            {
+                endDate = $"{DateTime.Now:yyyy-MM-dd}";
+            }
         }
     }
 }
