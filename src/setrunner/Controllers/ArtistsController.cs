@@ -10,10 +10,8 @@ namespace setrunner.Controllers
 {
     [Route("api/v1/artists")]
     [ApiController]
-    public class ArtistsController : Controller
+    public class ArtistsController : DBController
     {
-        private string connectionString_;
-
         public ArtistsController()
         {
             var server = Environment.GetEnvironmentVariable("DB_SERVER");
@@ -32,48 +30,87 @@ namespace setrunner.Controllers
             return new string[] { "deadmau5", "value2" };
         }
 
-        // GET api/values/5
-        [Route("{id}/tracks/popular")]//{limit:int}&{skip:int}")]
+        // GET api/v1/artists/ID/popular
+        [Route("{id}/tracks/popular")]//&{skip:int}")]
         [ProducesResponseType(typeof(List<TrackModel>),200)]
         [ProducesResponseType(typeof(List<TrackModel>),404)] //TODO figure out why single argument not supported
         [HttpGet]
-        public IActionResult GetArtistPopularTracks(string id)//, int limit = 25, int skip = 0)
+        public IActionResult GetArtistPopularTracks(string id, int limit = 25, int skip = 0)
         {
-            int limit = 25;
-            int skip = 10;
-            Console.WriteLine($"Received request for artist {id} with limit={limit} and skip={skip}.");
-            using(var connection = new MySqlConnection(connectionString_))
-            {
-                Console.WriteLine($"Connecting to MySQL with connection string={connectionString_}...");
-                connection.Open();
-                var command = connection.CreateCommand();
-                command.CommandText = $"CALL GetArtistPopularTracks('{id}', {limit}, {skip})";
-                var tracks = new List<TrackModel>();
-                using(var reader = command.ExecuteReader())
-                {
-                    while(reader.Read())
-                    {
-                        var track = new TrackModel()
-                        {
-                            Name = reader.GetString("track_name"),
-                            Artist = reader.GetString("artist_name"),
-                            Publisher = reader.GetString("publisher_name"),
-                            AvailableOnSpotify = reader.GetBoolean("on_spotify"),
-                            AvailableOnSoundcloud = reader.GetBoolean("on_soundcloud"),
-                            AvailableOnYoutube = reader.GetBoolean("on_youtube"),
-                            AvailableOnAppleMusic = reader.GetBoolean("on_apple_music"),
-                            CountSets = reader.GetInt32("count")
-                        };
-                        tracks.Add(track);
-                    }
-                }
-                if(tracks.Count == 0)
-                {
-                    return NotFound();
-                }
-                return Ok(tracks);
-            }         
+            var command = $"CALL GetArtistPopularTracks('{id}', {limit}, {skip})";
+            return GetItemsViaStoredProc(command, ReadTrack);
         }
 
+        // GET api/v1/artists/ID/sets/tracks
+        [Route("{id}/sets/tracks")]//&{skip:int}")]
+        [ProducesResponseType(typeof(List<TrackModel>),200)]
+        [ProducesResponseType(typeof(List<TrackModel>),404)]
+        [HttpGet]
+        public IActionResult GetArtistRecentSetTracks(string id, int numSets, int limit = 25, int skip = 0)
+        {
+            var command = $"CALL GetArtistsTracksInLastNSets('{id}', {numSets}, {limit}, {skip})";
+            return GetItemsViaStoredProc(command, ReadTrack);
+        }
+
+        // GET api/v1/artists/ID/sets/tracks
+        //TODO - Add ability to only provide one of the date parameters (i.e. sets before X, sets after Y type queries)
+        [Route("{id}/sets/tracks")]//&{skip:int}")]
+        [ProducesResponseType(typeof(List<TrackModel>),200)]
+        [ProducesResponseType(typeof(List<TrackModel>),404)]
+        [HttpGet]
+        public IActionResult GetArtistRecentSetTracks(string id, string startDate, string endDate, int limit = 25, int skip = 0)
+        {
+            var command = $"CALL GetArtistTracksInSetsInDateRange('{id}', '{startDate}', '{endDate}', {limit}, {skip})";
+            return GetItemsViaStoredProc(command, ReadTrack);
+        }
+
+        // GET api/v1/artists/ID/sets
+        [Route("{id}/sets")]//&{skip:int}")]
+        [ProducesResponseType(typeof(List<TrackModel>),200)]
+        [ProducesResponseType(typeof(List<TrackModel>),404)]
+        [HttpGet]
+        public IActionResult GetArtistSets(string id, int limit = 25, int skip = 0)
+        {
+            var command = $"CALL GetArtistSets('{id}',  {limit}, {skip})";
+            return GetItemsViaStoredProc(command, ReadSetlist);
+        }
+
+        // GET api/v1/artists/ID/sets
+        [Route("{id}/sets")]//&{skip:int}")]
+        [ProducesResponseType(typeof(List<TrackModel>),200)]
+        [ProducesResponseType(typeof(List<TrackModel>),404)]
+        [HttpGet]
+        public IActionResult GetArtistSetsInDateRange(string id, string startDate, string endDate, int limit = 25, int skip = 0)
+        {
+            var command = $"CALL GetArtistSetsInDateRange('{id}', '{startDate}', '{endDate}', {limit}, {skip})";
+            return GetItemsViaStoredProc(command, ReadSetlist);
+        }
+
+        private TrackModel ReadTrack(MySqlDataReader reader)
+        {
+            return new TrackModel()
+            {
+                Name = reader.GetString("track_name"),
+                Artist = reader.GetString("artist_name"),
+                Publisher = reader.GetString("publisher_name"),
+                OnSpotify = reader.GetBoolean("on_spotify"),
+                OnSoundcloud = reader.GetBoolean("on_soundcloud"),
+                OnYoutube = reader.GetBoolean("on_youtube"),
+                OnAppleMusic = reader.GetBoolean("on_apple_music"),
+                CountSets = reader.GetInt32("count")
+            };
+        }
+
+        private SetlistModel ReadSetlist(MySqlDataReader reader)
+        {
+            return new SetlistModel()
+            {
+                Name = reader.GetString("set_name"),
+                Artist = reader.GetString("artist_name"),
+                Uri = reader.GetString("uri"),
+                Venue = reader.GetString("venue_event"),
+                Date = reader.GetDateTime("set_date")
+            };
+        }
     }
 }
